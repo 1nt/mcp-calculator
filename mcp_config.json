@@ -39,6 +39,14 @@
       "env": {
         "BRAVE_API_KEY": "BSARy-qdkHZp_lG-Udo8EZQNM4y_toG"
       }
+    },
+    "image-tool": {
+      "type": "stdio",
+      "command": "/root/mcp-calculator/venv/bin/python",
+      "args": [
+        "-u",
+        "image_tool.py"
+      ]
     }
   }
 }

@@ -59,7 +59,7 @@ async def search_images(
                 h = img.get("properties", {}).get("height", "")
                 dims = f" {w}x{h}" if w and h else ""
                 lines.append(
-                    f"Title: {title}\nURL: {orig_url}\nSource: {img.get(page_url, )}{dims}\n---"
+                    f"Title: {title}\nURL: {orig_url}\nSource: {img.get('page_url', '')}{dims}\n---"
                 )
                 seen += 1
 

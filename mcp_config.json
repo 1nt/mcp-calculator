@@ -5,6 +5,14 @@
       "command": "python",
       "args": ["-m", "calculator"]
     },
+    "brave-search": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-u", "brave_search.py"],
+      "env": {
+        "BRAVE_API_KEY": "BSARy-qdkHZp_lG-Udo8EZQNM4y_toG"
+      }
+    },
     "remote-sse-server": {
       "type": "sse",
       "url": "https://api.example.com/sse",

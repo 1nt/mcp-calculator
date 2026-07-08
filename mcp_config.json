@@ -3,12 +3,18 @@
     "local-stdio-calculator": {
       "type": "stdio",
       "command": "python",
-      "args": ["-m", "calculator"]
+      "args": [
+        "-m",
+        "calculator"
+      ]
     },
     "brave-search": {
       "type": "stdio",
       "command": "python",
-      "args": ["-u", "brave_search.py"],
+      "args": [
+        "-u",
+        "brave_search.py"
+      ],
       "env": {
         "BRAVE_API_KEY": "BSARy-qdkHZp_lG-Udo8EZQNM4y_toG"
       }
@@ -22,6 +28,17 @@
       "type": "http",
       "url": "https://api.example.com/mcp",
       "disabled": true
+    },
+    "brave-image-search": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-u",
+        "brave_image_search.py"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "BSARy-qdkHZp_lG-Udo8EZQNM4y_toG"
+      }
     }
   }
 }

@@ -9,7 +9,7 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
 
 mcp = FastMCP("BraveImageSearch")
-_SUPPORTED_EXT = (".jpg", ".jpeg", ".png")
+_SUPPORTED_EXT = (".png",)
 
 
 @mcp.tool()
@@ -65,7 +65,7 @@ async def search_images(
 
             if not lines:
                 return (
-                    "No JPEG/PNG images found. Try a different query or "
+                    "No PNG images found. Try a different query or "
                     "use convert_image_for_screen tool with any image URL."
                 )
             return "\n".join(lines)

@@ -60,7 +60,8 @@ async def search_images(
     if not api_key:
         return "Error: BRAVE_API_KEY is not set."
 
-    params = f"q={query}&count={min(count, 200)}&safesearch={safesearch}"
+    from urllib.parse import urlencode
+    params = urlencode({"q": query, "count": min(count, 200), "safesearch": safesearch})
     url = f"https://api.search.brave.com/res/v1/images/search?{params}"
     headers = {
         "Accept": "application/json",

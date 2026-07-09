@@ -1,8 +1,10 @@
 # brave_image_search.py
+import asyncio
 from fastmcp import FastMCP
 import sys
 import os
 import httpx
+import subprocess
 from io import BytesIO
 
 if sys.platform == "win32":
@@ -87,8 +89,8 @@ async def prepare_image_for_screen(url: str) -> str:
     except Exception as e:
         return f"Error decoding: {str(e)}"
 
-    if img.mode != "RGBA":
-        img = img.convert("RGBA")
+    if img.mode != "RGB":
+        img = img.convert("RGB")
 
     img.thumbnail((320, 240), Image.LANCZOS)
 
@@ -96,17 +98,27 @@ async def prepare_image_for_screen(url: str) -> str:
     img.save(buf, format="PNG")
     png_data = buf.getvalue()
 
+    tmp_path = "/tmp/mcp_preview.png"
+    with open(tmp_path, "wb") as f:
+        f.write(png_data)
+
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            up = await client.post(
-                "https://catbox.moe/user/api.php",
-                data={"reqtype": "fileupload"},
-                files={"fileToUpload": ("image.png", png_data, "image/png")}
-            )
-            if up.status_code == 200:
-                url = up.text.strip()
-                if url.startswith("http"):
-                    return url
+        proc = await asyncio.create_subprocess_exec(
+            "curl", "-s", "-F", "reqtype=fileupload",
+            "-F", f"fileToUpload=@{tmp_path};filename=image.png;type=image/png",
+            "https://catbox.moe/user/api.php",
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+        url = stdout.decode().strip()
+        if url.startswith("http"):
+            os.unlink(tmp_path)
+            return url
+    except Exception:
+        pass
+
+    try:
+        os.unlink(tmp_path)
     except Exception:
         pass
 

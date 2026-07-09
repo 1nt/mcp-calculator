@@ -24,14 +24,25 @@ async def _curl(url: str, headers: dict = None, timeout: int = 20) -> bytes:
     host = parsed.hostname
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
 
-    try:
-        ips = [addr[4][0] for addr in socket.getaddrinfo(host, port)]
-    except Exception:
-        ips = []
+    ip = None
+    for dns in ["8.8.8.8", "1.1.1.1", "208.67.222.222"]:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "host", host, dns,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+            for line in stdout.decode().splitlines():
+                if f"has address" in line:
+                    ip = line.split()[-1]
+                    break
+            if ip:
+                break
+        except Exception:
+            continue
 
-    if ips:
-        resolved = f"{host}:{port}:{ips[0]}"
-        cmd = ["curl", "-s", "--max-time", str(timeout), "--resolve", resolved]
+    if ip:
+        cmd = ["curl", "-s", "--max-time", str(timeout), "--resolve", f"{host}:{port}:{ip}"]
     else:
         cmd = ["curl", "-s", "--max-time", str(timeout)]
 

@@ -1,40 +1,11 @@
 {
   "mcpServers": {
-    "local-stdio-calculator": {
+    "all-tools": {
       "type": "stdio",
-      "command": "python",
-      "args": [
-        "-m",
-        "calculator"
-      ]
-    },
-    "brave-search": {
-      "type": "stdio",
-      "command": "python",
+      "command": "/root/mcp-calculator/venv/bin/python",
       "args": [
         "-u",
-        "brave_search.py"
-      ],
-      "env": {
-        "BRAVE_API_KEY": "BSARy-qdkHZp_lG-Udo8EZQNM4y_toG"
-      }
-    },
-    "remote-sse-server": {
-      "type": "sse",
-      "url": "https://api.example.com/sse",
-      "disabled": true
-    },
-    "remote-http-server": {
-      "type": "http",
-      "url": "https://api.example.com/mcp",
-      "disabled": true
-    },
-    "brave-image-search": {
-      "type": "stdio",
-      "command": "python",
-      "args": [
-        "-u",
-        "brave_image_search.py"
+        "all_tools.py"
       ],
       "env": {
         "BRAVE_API_KEY": "BSARy-qdkHZp_lG-Udo8EZQNM4y_toG"

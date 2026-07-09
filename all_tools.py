@@ -1,10 +1,8 @@
-# all_tools.py - Combined MCP server with all tools
 import asyncio
 import json
 import os
 import subprocess
 import sys
-import socket
 from io import BytesIO
 from urllib.parse import urlencode, urlparse
 
@@ -18,33 +16,32 @@ mcp = FastMCP("AllTools")
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
 
 
+def _hostname_to_ip(host: str, timeout: int = 3) -> str:
+    import socket
+    for dns in ["8.8.8.8", "1.1.1.1", "208.67.222.222"]:
+        try:
+            proc = subprocess.run(
+                ["host", host, dns],
+                capture_output=True, text=True, timeout=timeout
+            )
+            for line in proc.stdout.splitlines():
+                if "has address" in line:
+                    return line.split()[-1]
+        except Exception:
+            continue
+    return ""
+
+
 async def _curl(url: str, headers: dict = None, timeout: int = 20) -> bytes:
     parsed = urlparse(url)
     host = parsed.hostname
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
 
-    ip = None
-    for dns in ["8.8.8.8", "1.1.1.1", "208.67.222.222"]:
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "host", host, dns,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
-            for line in stdout.decode().splitlines():
-                if "has address" in line:
-                    ip = line.split()[-1]
-                    break
-            if ip:
-                break
-        except Exception:
-            continue
+    ip = _hostname_to_ip(host)
 
+    cmd = ["curl", "-s", "--max-time", str(timeout)]
     if ip:
-        cmd = ["curl", "-s", "--max-time", str(timeout), "--resolve", f"{host}:{port}:{ip}"]
-    else:
-        cmd = ["curl", "-s", "--max-time", str(timeout)]
-
+        cmd += ["--resolve", f"{host}:{port}:{ip}"]
     if headers:
         for k, v in headers.items():
             cmd += ["-H", f"{k}: {v}"]
@@ -54,6 +51,25 @@ async def _curl(url: str, headers: dict = None, timeout: int = 20) -> bytes:
     stdout, stderr = await proc.communicate()
     if proc.returncode != 0:
         raise RuntimeError(f"curl exit {proc.returncode}: {stderr.decode()[:200]}")
+    return stdout
+
+
+async def _curl_upload(filepath: str, url: str, timeout: int = 25) -> bytes:
+    parsed = urlparse(url)
+    host = parsed.hostname
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    ip = _hostname_to_ip(host)
+
+    cmd = ["curl", "-s", "--max-time", str(timeout)]
+    if ip:
+        cmd += ["--resolve", f"{host}:{port}:{ip}"]
+    cmd += ["-F", "reqtype=fileupload", "-F", f"fileToUpload=@{filepath};filename=image.png;type=image/png", url]
+
+    proc = await asyncio.create_subprocess_exec(*cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        raise RuntimeError(f"upload curl exit {proc.returncode}: {stderr.decode()[:200]}")
     return stdout
 
 
@@ -117,7 +133,8 @@ async def search_images(query: str, count: int = 10, safesearch: str = "strict")
 
 @mcp.tool()
 async def prepare_image_for_screen(url: str, thumb_url: str = "") -> str:
-    """Download image, convert to small PNG (max 320x240), upload to catbox.moe, After getting this URL, you MUST call screen.preview_image(url) on the device to display it."""
+    """Download image, convert to small PNG (max 320x240), upload to catbox.moe.
+After getting this URL, you MUST call screen.preview_image(url) on the device to display it."""
     from PIL import Image
 
     download_url = thumb_url if thumb_url else url
@@ -150,19 +167,12 @@ async def prepare_image_for_screen(url: str, thumb_url: str = "") -> str:
         f.write(png_data)
 
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "curl", "-s", "--max-time", "20",
-            "-F", "reqtype=fileupload",
-            "-F", f"fileToUpload=@{tmp};filename=image.png;type=image/png",
-            "https://catbox.moe/user/api.php",
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=25)
+        stdout = await _curl_upload(tmp, "https://catbox.moe/user/api.php", timeout=25)
         result = stdout.decode().strip()
         if result.startswith("http"):
             return result
-    except Exception:
-        pass
+    except Exception as e:
+        return f"Error uploading: {str(e)}"
     finally:
         try:
             os.unlink(tmp)

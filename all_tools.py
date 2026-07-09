@@ -117,7 +117,7 @@ async def search_images(query: str, count: int = 10, safesearch: str = "strict")
 
 @mcp.tool()
 async def prepare_image_for_screen(url: str, thumb_url: str = "") -> str:
-    """Download image, convert to small PNG (max 320x240), upload to catbox.moe, return public URL for device display."""
+    """Download image, convert to small PNG (max 320x240), upload to catbox.moe, After getting this URL, you MUST call screen.preview_image(url) on the device to display it."""
     from PIL import Image
 
     download_url = thumb_url if thumb_url else url

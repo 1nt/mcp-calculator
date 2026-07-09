@@ -56,8 +56,9 @@ async def search_images(
                 w = img.get("properties", {}).get("width", 0) or 0
                 h = img.get("properties", {}).get("height", 0) or 0
                 dims = f" {w}x{h}" if w and h else ""
+                thumb = img.get("thumbnail", {}).get("src", "")
                 lines.append(
-                    f"Title: {title}\nURL: {orig_url}\nSource: {img.get('url', '')}{dims}\n---"
+                    f"Title: {title}\nURL: {orig_url}\nThumb: {thumb}\nSource: {img.get('url', '')}{dims}\n---"
                 )
                 seen += 1
 
@@ -72,17 +73,26 @@ async def search_images(
 
 
 @mcp.tool()
-async def prepare_image_for_screen(url: str) -> str:
-    """Download image from URL, convert to small PNG (max 320x240), upload to temp host, return public URL for device display."""
+async def prepare_image_for_screen(url: str, thumb_url: str = "") -> str:
+    """Download image from URL, convert to small PNG (max 320x240), upload to temp host, return public URL for device display. If thumb_url is provided, use it for faster download."""
     from PIL import Image
 
-    timeout = httpx.Timeout(30.0, connect=15.0)
+    download_url = thumb_url if thumb_url else url
+    timeout = httpx.Timeout(20.0, connect=10.0)
     try:
         async with httpx.AsyncClient(timeout=timeout, trust_env=True) as client:
-            r = await client.get(url)
+            r = await client.get(download_url, headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
     except Exception as e:
-        return f"Error downloading: {str(e)}"
+        if thumb_url:
+            try:
+                async with httpx.AsyncClient(timeout=timeout, trust_env=True) as client:
+                    r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+                    r.raise_for_status()
+            except Exception as e2:
+                return f"Error downloading: {str(e2)}"
+        else:
+            return f"Error downloading: {str(e)}"
 
     try:
         img = Image.open(BytesIO(r.content))

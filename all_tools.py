@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import os
 import subprocess
@@ -7,12 +8,29 @@ from io import BytesIO
 from urllib.parse import urlencode, urlparse
 
 from fastmcp import FastMCP
+from alarm_tool import (
+    get_scheduler,
+    set_timer_impl,
+    get_active_timers_impl,
+    cancel_timer_impl,
+)
 
 if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8")
 
-mcp = FastMCP("AllTools")
+
+@asynccontextmanager
+async def app_lifespan(server):
+    sched = get_scheduler()
+    sys.stderr.write("[ALARM] Scheduler initialized and timers loaded\n")
+    sys.stderr.flush()
+    yield
+    if sched and sched.running:
+        sched.shutdown(wait=False)
+
+
+mcp = FastMCP("AllTools", lifespan=app_lifespan)
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
 
 
@@ -91,7 +109,7 @@ async def search_brave(query: str) -> str:
 
     snippets = []
     for r in results[:5]:
-        snippets.append(f"Title: {r.get(title)}\nURL: {r.get(url)}\nDescription: {r.get(description)}\n---")
+        snippets.append(f"Title: {r.get('title')}\nURL: {r.get('url')}\nDescription: {r.get('description')}\n---")
     return "\n".join(snippets) if snippets else "No results found."
 
 
@@ -126,7 +144,7 @@ async def search_images(query: str, count: int = 10, safesearch: str = "strict")
         h = img.get("properties", {}).get("height", 0) or 0
         dims = f" {w}x{h}" if w and h else ""
         thumb = img.get("thumbnail", {}).get("src", "")
-        lines.append(f"Title: {title}\nURL: {orig_url}\nThumb: {thumb}\nSource: {img.get(url, )}{dims}\n---")
+        lines.append(f"Title: {title}\nURL: {orig_url}\nThumb: {thumb}\nSource: {img.get('url', '')}{dims}\n---")
 
     return "\n".join(lines) if lines else "No images found."
 
@@ -194,6 +212,45 @@ def calculate(expression: str) -> str:
         return f"{result:.4f}" if isinstance(result, float) else str(result)
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+@mcp.tool()
+async def set_timer(title: str, seconds: int = None, target_time: str = None) -> str:
+    """Установить будильник или таймер на определенное время или интервал.
+    Укажите seconds (например 600 для 10 минут) или target_time (например '07:30' или '18:45').
+    """
+    return await set_timer_impl(title=title, seconds=seconds, target_time=target_time)
+
+
+@mcp.tool()
+async def set_alarm(title: str, target_time: str = None, seconds: int = None) -> str:
+    """Установить будильник на точное время (например '07:30' или '08:00') или интервал в секундах.
+    """
+    return await set_timer_impl(title=title, seconds=seconds, target_time=target_time)
+
+
+@mcp.tool()
+async def get_active_timers() -> str:
+    """Возвращает список всех активных таймеров и будильников с оставшимся временем."""
+    return await get_active_timers_impl()
+
+
+@mcp.tool()
+async def get_timers() -> str:
+    """Возвращает список всех активных таймеров и будильников."""
+    return await get_active_timers_impl()
+
+
+@mcp.tool()
+async def cancel_timer(title: str) -> str:
+    """Отменить существующий таймер или будильник по названию или ID."""
+    return await cancel_timer_impl(title=title)
+
+
+@mcp.tool()
+async def cancel_alarm(title: str) -> str:
+    """Отменить существующий будильник или таймер по названию или ID."""
+    return await cancel_timer_impl(title=title)
 
 
 if __name__ == "__main__":

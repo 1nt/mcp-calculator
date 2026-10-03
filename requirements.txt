@@ -6,3 +6,5 @@ mcp-proxy>=0.10.0
 fastmcp>=2.13.0.2
 httpx
 
+apscheduler>=3.10.4
+aiomqtt>=2.0.0

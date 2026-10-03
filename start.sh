@@ -1,3 +1,4 @@
+#!/bin/bash
+cd /root/mcp-calculator
 source venv/bin/activate
-export $(grep -v ^s*# .env | xargs)
-python mcp_pipe.py
+python -u mcp_pipe.py
